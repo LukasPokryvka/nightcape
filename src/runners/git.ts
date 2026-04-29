@@ -23,6 +23,7 @@ export function makeGitRunner(deps: { cwd: string; spawn?: SpawnFn }): GitRunner
       if (r.exitCode !== 0) throw new Error(`git rev-parse ${ref} failed: ${r.stderr}`);
       return r.stdout.trim();
     },
+    // Local-only check; for remote-tracking refs use revParse("refs/remotes/origin/<name>")
     async branchExists(name) {
       const r = await spawn(["git", "branch", "--list", name], { cwd });
       return r.exitCode === 0 && r.stdout.trim().length > 0;

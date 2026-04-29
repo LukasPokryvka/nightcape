@@ -41,10 +41,12 @@ export function makeGhRunner(deps: { cwd: string; spawn?: SpawnFn }): GhRunner {
       if (opts.draft) cmd.push("--draft");
       const r = await spawn(cmd, { cwd });
       if (r.exitCode !== 0) throw new Error(`gh pr create failed: ${r.stderr}`);
-      const url = r.stdout.trim().split("\n").pop() ?? "";
-      const m = url.match(/\/pull\/(\d+)$/);
-      const number = m ? parseInt(m[1]!, 10) : -1;
-      return { number, url };
+      const lines = r.stdout.split("\n").map(l => l.trim()).filter(Boolean);
+      const urlLine = lines.find(l => /\/pull\/\d+(?:$|\?|#)/.test(l));
+      if (!urlLine) throw new Error(`gh pr create: could not find PR url in output: ${r.stdout}`);
+      const m = urlLine.match(/\/pull\/(\d+)/);
+      if (!m) throw new Error(`gh pr create: PR url found but number not extractable: ${urlLine}`);
+      return { number: parseInt(m[1]!, 10), url: urlLine };
     },
     async mergePrSquashAuto(n) {
       const r = await spawn(["gh", "pr", "merge", String(n), "--squash", "--auto"], { cwd });

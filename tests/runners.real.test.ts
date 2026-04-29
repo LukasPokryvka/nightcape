@@ -58,3 +58,14 @@ test("git.revParse returns trimmed sha", async () => {
   const git = makeGitRunner({ cwd: "/repo", spawn: fake.spawn });
   expect(await git.revParse("HEAD")).toBe("deadbeef");
 });
+
+test("gh.mergePrSquashAuto returns ok:false with stderr message on non-zero exit", async () => {
+  const fake = makeFakeSpawn([
+    { match: cmd => cmd[0] === "gh" && cmd[1] === "pr" && cmd[2] === "merge",
+      stdout: "", stderr: "Pull request is not mergeable", exitCode: 1 },
+  ]);
+  const gh = makeGhRunner({ cwd: "/repo", spawn: fake.spawn });
+  const r = await gh.mergePrSquashAuto(47);
+  expect(r.ok).toBe(false);
+  expect(r.message).toContain("not mergeable");
+});
