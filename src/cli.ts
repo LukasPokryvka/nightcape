@@ -1,6 +1,10 @@
 import { helpCommand } from "./commands/help";
 import { runDoctor } from "./commands/doctor";
 import { runInit } from "./commands/init";
+import { runStatus } from "./commands/status";
+import { runReset } from "./commands/reset";
+import { runReport } from "./commands/report";
+import { runStop } from "./commands/stop";
 import { makeGhRunner } from "./runners/gh";
 import { makeGitRunner } from "./runners/git";
 import { makeClaudeRunner } from "./runners/claude";
@@ -33,6 +37,28 @@ export async function runCli(argv: string[]): Promise<CliResult> {
   if (command === "init") {
     const r = await runInit({ repoRoot: process.cwd() });
     return { stdout: r.stdout, stderr: "", exitCode: r.exitCode };
+  }
+
+  if (command === "status") {
+    const r = await runStatus({ repoRoot: process.cwd() });
+    return { stdout: r.stdout, stderr: "", exitCode: r.exitCode };
+  }
+
+  if (command === "reset") {
+    const archive = argv.includes("--archive");
+    const r = await runReset({ repoRoot: process.cwd(), archive });
+    return { stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode };
+  }
+
+  if (command === "report") {
+    const date = argv[1]; // optional date arg
+    const r = await runReport({ repoRoot: process.cwd(), date });
+    return { stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode };
+  }
+
+  if (command === "stop") {
+    const r = await runStop({ repoRoot: process.cwd() });
+    return { stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode };
   }
 
   return {
