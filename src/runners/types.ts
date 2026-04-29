@@ -40,7 +40,7 @@ export type ClaudeRunner = {
     model: "sonnet" | "opus";
     permissionMode: "dangerous" | "acceptEdits" | "default";
     cwd: string;
-    logPath: string;             // stream stdout here line-by-line
-    onSignalCheck?: () => "stop" | null; // poll for graceful stop
+    logPath: string;             // stdout (+ stderr block) written here on process exit; v0.2 may stream
+    onSignalCheck?: () => "stop" | null; // reserved for v0.2 streaming runner; v0.1.0 ignores it (graceful stop happens between issues)
   }): Promise<ClaudeRunResult>;
 };

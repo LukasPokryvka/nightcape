@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { existsSync, readdirSync, writeFileSync } from "node:fs";
 import type { ClaudeRunner, ClaudeRunResult } from "./types";
 import { defaultSpawn, type SpawnFn } from "./gh";
 
@@ -19,12 +19,13 @@ export function makeClaudeRunner(deps: { spawn?: SpawnFn } = {}): ClaudeRunner {
       return r.stdout.trim();
     },
     async hasSuperpowers() {
-      // Best-effort check — we look for the superpowers plugin directory under ~/.claude
+      // Best-effort check — look for the superpowers plugin directory under ~/.claude
       try {
         const home = process.env.HOME ?? "";
         if (!home) return false;
-        const r = await spawn(["ls", `${home}/.claude/plugins/cache/claude-plugins-official`], { cwd: home });
-        return r.exitCode === 0 && r.stdout.includes("superpowers");
+        const dir = `${home}/.claude/plugins/cache/claude-plugins-official`;
+        if (!existsSync(dir)) return false;
+        return readdirSync(dir).some(name => name.includes("superpowers"));
       } catch { return false; }
     },
     async run(opts) {
