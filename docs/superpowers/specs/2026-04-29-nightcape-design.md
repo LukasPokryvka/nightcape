@@ -101,7 +101,7 @@ Three layers of responsibility:
 │                                                                  │
 │ 7. Decide outcome (orchestrator, NOT Claude)                     │
 │    if ready_to_merge && lint && build &&                         │
-│       no critical/major review findings:                         │
+│       no Critical/Important review findings:                     │
 │         gh pr create --title "..." --body "Closes #N"            │
 │         gh pr merge <pr> --squash --auto                         │
 │         outcome = "auto_merged"                                  │
@@ -116,7 +116,7 @@ Three layers of responsibility:
 
 Two load-bearing details:
 
-1. **The orchestrator owns the gate, not Claude.** Claude reports facts ("lint passed", "review found 2 minor"); the orchestrator decides whether to auto-merge. Claude shouldn't be able to talk itself into merging by being optimistic.
+1. **The orchestrator owns the gate, not Claude.** Claude reports facts ("lint passed", "review found 2 Minor"); the orchestrator decides whether to auto-merge. Claude shouldn't be able to talk itself into merging by being optimistic.
 2. **The final-JSON contract.** The prompt instructs Claude to end its output with a fenced ` ```json ` block matching the schema in step 6. This is the only structured I/O between orchestrator and executor; everything else is free-form log output.
 
 ## Auto-merge gate
@@ -124,7 +124,7 @@ Two load-bearing details:
 A PR has auto-merge enabled only when *all* of these hold:
 - Claude reported `status: "ready_to_merge"` in the final JSON.
 - Claude reported `lint_passed: true` and `build_passed: true`.
-- `review_findings` contains no findings whose severity is in the configured blocking-severities set (default: `critical`, `major`). Severities come from the `requesting-code-review` skill's output schema.
+- `review_findings` contains no findings whose severity is in the configured blocking-severities set (default: `Critical`, `Important`). Severity vocabulary comes from the `requesting-code-review` skill, which categorizes findings as `Critical` (must fix), `Important` (should fix), and `Minor` (nice to have). Default matches the skill's own guidance ("Fix Critical issues immediately. Fix Important issues before proceeding").
 
 When all three hold, nightcape calls `gh pr merge --squash --auto`, which *queues* the merge with GitHub. GitHub performs the merge once any branch-protection required checks pass. If they never pass, the PR sits indefinitely with auto-merge enabled — the user finds it in `gh pr list` in the morning. Nightcape considers its job done when the call succeeds; it does not wait for GitHub to actually finalize the merge.
 
@@ -157,7 +157,7 @@ Per-issue overrides via labels:
   "build": "bun run build",
   "worktrees_dir": "~/.nightcape/worktrees",
   "max_issues_per_run": 20,
-  "blocking_severities": ["critical", "major"]
+  "blocking_severities": ["Critical", "Important"]
 }
 ```
 
@@ -196,7 +196,7 @@ Everything lives at `<repo>/.nightcape/` (gitignored):
     { "issue": 12, "outcome": "auto_merged",  "branch": "nightcape/issue-12",
       "pr": 47, "duration_sec": 612, "model": "sonnet" },
     { "issue": 13, "outcome": "needs_review", "branch": "nightcape/issue-13",
-      "pr": 48, "reason": "code-review found 1 critical finding",
+      "pr": 48, "reason": "code-review found 1 Critical finding",
       "model": "sonnet" }
   ],
   "rate_limit_until": null
@@ -228,7 +228,7 @@ Issues processed: 4 · Auto-merged: 2 · Needs review: 1 · Failed: 1
 
 ## #13 — Refactor auth middleware         🟡 needs review
 - branch: nightcape/issue-13 · PR #48 (draft) · sonnet · 18m
-- code-review found 1 critical finding (token-leak risk)
+- code-review found 1 Critical finding (token-leak risk)
 - log: .nightcape/logs/issue-13-2026-04-29T23-41-08.log
 ```
 
@@ -271,7 +271,7 @@ Hard-fails fast with actionable messages. Better at 22:00 than at 03:00.
 
 ## Failure handling
 
-On any of: Claude exits non-zero · final JSON unparseable · `status: "failed"` · `status: "ready_to_merge"` but lint/build failed · review found critical/major findings · `gh pr merge --auto` rejected:
+On any of: Claude exits non-zero · final JSON unparseable · `status: "failed"` · `status: "ready_to_merge"` but lint/build failed · review found `Critical` or `Important` findings · `gh pr merge --auto` rejected:
 
 1. Push whatever exists on `nightcape/issue-N` (skip if no commits).
 2. `gh pr create --draft --title "WIP: nightcape #N <title>" --body <failure summary>`.
