@@ -9,6 +9,7 @@ export class FakeGh implements GhRunner {
   issues: Issue[] = [];
   prCounter = 100;
   prMergeAcceptedFor: Set<number> = new Set();
+  throwOnCreatePr?: string;
 
   async authStatus() {
     this.calls.push({ method: "authStatus", args: [] });
@@ -29,6 +30,7 @@ export class FakeGh implements GhRunner {
   }
   async createPr(opts: { title: string; body: string; head: string; base: string; draft: boolean }) {
     this.calls.push({ method: "createPr", args: [opts] });
+    if (this.throwOnCreatePr) throw new Error(this.throwOnCreatePr);
     const number = this.prCounter++;
     return { number, url: `https://github.com/test/repo/pull/${number}` };
   }

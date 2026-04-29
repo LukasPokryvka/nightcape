@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runIssue } from "../src/orchestrator";
@@ -41,6 +41,12 @@ test("happy path: ready_to_merge → creates PR → mergePrSquashAuto → state.
   expect(gh.calls.find(c => c.method === "createPr")).toBeDefined();
   expect((gh.calls.find(c => c.method === "createPr")!.args[0] as any).draft).toBe(false);
   expect(gh.calls.find(c => c.method === "mergePrSquashAuto")).toBeDefined();
+  const reportPath = join(dir, ".nightcape", "runs", state.run_id.slice(0, 10) + ".md");
+  expect(existsSync(reportPath)).toBe(true);
+  const reportContent = readFileSync(reportPath, "utf8");
+  expect(reportContent).toContain("#12");
+  expect(reportContent).toContain("Add user search endpoint");
+  expect(reportContent).toContain("auto-merged");
   rmSync(dir, { recursive: true });
 });
 
@@ -144,5 +150,23 @@ test("auto-merge call rejection (branch protection) → falls back to needs_revi
   });
   expect(r.state.completed.at(-1)?.outcome).toBe("needs_review");
   expect(r.state.completed.at(-1)?.reason).toContain("merge");
+  rmSync(dir, { recursive: true });
+});
+
+test("createPr throws → outcome=failed, state recorded, report appended", async () => {
+  const dir = tmp();
+  let state = initState(dir, [12]);
+  const { gh, git, claude } = setupFakes(claudeOutputWith(FINAL_JSON_READY));
+  gh.throwOnCreatePr = "no commits to push";
+  const r = await runIssue({
+    issueNumber: 12, repoRoot: dir, config: DEFAULT_CONFIG, state,
+    runners: { gh, git, claude }, now: () => new Date("2026-04-29T22:00:00Z"),
+  });
+  expect(r.state.completed.at(-1)?.outcome).toBe("failed");
+  expect(r.state.completed.at(-1)?.reason).toContain("pr-create failed");
+  expect(r.state.completed.at(-1)?.reason).toContain("no commits to push");
+  // Morning report should still be appended
+  const reportPath = join(dir, ".nightcape", "runs", state.run_id.slice(0, 10) + ".md");
+  expect(existsSync(reportPath)).toBe(true);
   rmSync(dir, { recursive: true });
 });
