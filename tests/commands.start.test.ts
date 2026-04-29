@@ -143,6 +143,31 @@ test("start: previous fully-drained run is archived to runs/<date>/state.json be
   rmSync(dir, { recursive: true });
 });
 
+test("start: 5 consecutive rate-limits on same issue records failure and moves on", async () => {
+  const dir = tmp();
+  scaffoldConfig(dir);
+  const gh = new FakeGh(); gh.issues = [ISSUE_12];
+  const git = new FakeGit(); git.repoOk = true; git.remoteOk = true;
+  const claude = new FakeClaude(); claude.superpowersInstalled = true;
+  // Push 5 rate-limit responses
+  for (let i = 0; i < 5; i++) {
+    claude.responses.push({ stdout: "", stderr: "rate_limit_exceeded — Reset at 2026-04-30T03:00:00Z.", exitCode: 1, rateLimited: true, rateLimitUntil: "2026-04-30T03:00:00Z" });
+  }
+  const r = await runStart({
+    repoRoot: dir, max: undefined, dryRun: false,
+    runners: { gh, git, claude },
+    bunVersion: "1.1.0", which: async () => "/bin/cmd",
+    sleep: async () => {}, now: () => new Date("2026-04-29T22:00:00Z"),
+    onSignal: () => null,
+  });
+  expect(r.exitCode).toBe(0);
+  const state = JSON.parse(readFileSync(join(dir, ".nightcape", "state.json"), "utf8"));
+  expect(state.completed).toHaveLength(1);
+  expect(state.completed[0].outcome).toBe("failed");
+  expect(state.completed[0].reason).toContain("retry exhausted");
+  rmSync(dir, { recursive: true });
+});
+
 test("start: SIGTERM during loop ends after current issue", async () => {
   const dir = tmp();
   scaffoldConfig(dir);

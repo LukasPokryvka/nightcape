@@ -1,7 +1,7 @@
 import type { GhRunner, GitRunner, ClaudeRunner } from "../runners/types";
 import { loadConfig } from "../config";
 import { acquireLock, releaseLock } from "../lock";
-import { initState, loadState, saveState, setRateLimit, archiveState } from "../state";
+import { initState, loadState, saveState, setRateLimit, archiveState, recordCompletion } from "../state";
 import { runDoctor } from "./doctor";
 import { runIssue } from "../orchestrator";
 import { initReport, finalizeReport } from "../report";
@@ -73,6 +73,7 @@ export async function runStart(args: StartArgs): Promise<{ stdout: string; stder
       if (processed >= limit) break;
 
       let attempts = 0;
+      let exhausted = true;  // assume worst until proven otherwise
       while (attempts < 5) {
         attempts++;
         const result = await runIssue({
@@ -90,11 +91,28 @@ export async function runStart(args: StartArgs): Promise<{ stdout: string; stder
           if (args.onSignal() === "stop") { interrupted = true; break; }
           continue;
         }
+        exhausted = false;
         break;
       }
+
+      if (exhausted && !interrupted) {
+        // Synthesize a failed completion so the issue isn't silently retried next run
+        state = recordCompletion(state, {
+          issue: n,
+          outcome: "failed",
+          branch: `nightcape/issue-${n}`,
+          duration_sec: 0,
+          model: cfg.default_model,
+          reason: "rate-limit retry exhausted (5 consecutive shouldSleep returns)",
+        });
+        saveState(args.repoRoot, state);
+        stdoutBuf += `issue #${n}: rate-limit retry exhausted; marked failed\n`;
+      }
+
+      if (interrupted) break;
       processed++;
       // Check signal AFTER completing current issue so we finish it before stopping
-      if (interrupted || args.onSignal() === "stop") { interrupted = true; break; }
+      if (args.onSignal() === "stop") { interrupted = true; break; }
     }
 
     finalizeReport(args.repoRoot, state.run_id.slice(0, 10), args.now());
