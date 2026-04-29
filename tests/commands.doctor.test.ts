@@ -64,5 +64,20 @@ test("doctor warns (non-fatal) when permission_mode != dangerous", async () => {
   rmSync(dir, { recursive: true });
 });
 
+test("doctor fails when run.lock is held by a live PID", async () => {
+  const { writeFileSync, mkdirSync } = await import("node:fs");
+  const dir = tmp();
+  scaffoldConfig(dir);
+  mkdirSync(join(dir, ".nightcape"), { recursive: true });
+  writeFileSync(join(dir, ".nightcape", "run.lock"), String(process.pid) + "\n");
+  const r = await runDoctor({
+    repoRoot: dir, runners: { gh: new FakeGh(), git: makeHealthyGit(), claude: makeHealthyClaude() },
+    bunVersion: "1.1.0", which: async () => "/usr/local/bin/cmd",
+  });
+  expect(r.exitCode).toBe(1);
+  expect(r.stdout).toContain("run.lock");
+  rmSync(dir, { recursive: true });
+});
+
 function makeHealthyGit() { const g = new FakeGit(); g.repoOk = true; g.remoteOk = true; return g; }
 function makeHealthyClaude() { const c = new FakeClaude(); c.superpowersInstalled = true; return c; }

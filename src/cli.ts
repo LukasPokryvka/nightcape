@@ -24,12 +24,7 @@ export async function runCli(argv: string[]): Promise<CliResult> {
         claude: makeClaudeRunner(),
       },
       bunVersion: Bun.version,
-      which: async (cmd) => {
-        const p = Bun.spawn(["which", cmd], { stdout: "pipe", stderr: "pipe" });
-        await p.exited;
-        const out = (await new Response(p.stdout).text()).trim();
-        return out || null;
-      },
+      which: async (cmd) => Bun.which(cmd) ?? null,
     });
     return { stdout: r.stdout, stderr: "", exitCode: r.exitCode };
   }

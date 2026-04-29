@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import type { GhRunner, GitRunner, ClaudeRunner } from "../runners/types";
 import { loadConfig } from "../config";
 import { isLockHeld } from "../lock";
