@@ -1,5 +1,6 @@
 import { helpCommand } from "./commands/help";
 import { runDoctor } from "./commands/doctor";
+import { runInit } from "./commands/init";
 import { makeGhRunner } from "./runners/gh";
 import { makeGitRunner } from "./runners/git";
 import { makeClaudeRunner } from "./runners/claude";
@@ -26,6 +27,11 @@ export async function runCli(argv: string[]): Promise<CliResult> {
       bunVersion: Bun.version,
       which: async (cmd) => Bun.which(cmd) ?? null,
     });
+    return { stdout: r.stdout, stderr: "", exitCode: r.exitCode };
+  }
+
+  if (command === "init") {
+    const r = await runInit({ repoRoot: process.cwd() });
     return { stdout: r.stdout, stderr: "", exitCode: r.exitCode };
   }
 
