@@ -5,6 +5,7 @@ import { runStatus } from "./commands/status";
 import { runReset } from "./commands/reset";
 import { runReport } from "./commands/report";
 import { runStop } from "./commands/stop";
+import { runStart } from "./commands/start";
 import { makeGhRunner } from "./runners/gh";
 import { makeGitRunner } from "./runners/git";
 import { makeClaudeRunner } from "./runners/claude";
@@ -61,9 +62,42 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     return { stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode };
   }
 
+  if (command === "start") {
+    const max = parseFlagInt(argv, "--max");
+    const dryRun = argv.includes("--dry-run");
+    const cwd = process.cwd();
+    let stopRequested = false;
+    const sigtermHandler = () => { stopRequested = true; };
+    process.on("SIGTERM", sigtermHandler);
+    process.on("SIGINT", sigtermHandler);
+    const r = await runStart({
+      repoRoot: cwd, max, dryRun,
+      runners: {
+        gh: makeGhRunner({ cwd }),
+        git: makeGitRunner({ cwd }),
+        claude: makeClaudeRunner(),
+      },
+      bunVersion: Bun.version,
+      which: async (cmd) => Bun.which(cmd) ?? null,
+      sleep: (ms) => new Promise<void>(res => setTimeout(res, Math.min(ms, 6 * 60 * 60 * 1000))),
+      now: () => new Date(),
+      onSignal: () => stopRequested ? "stop" : null,
+    });
+    (process as any).off("SIGTERM", sigtermHandler);
+    (process as any).off("SIGINT", sigtermHandler);
+    return r;
+  }
+
   return {
     stdout: "",
     stderr: `nightcape: unknown command '${command}'\nRun 'nightcape help' for usage.\n`,
     exitCode: 1,
   };
+}
+
+function parseFlagInt(argv: string[], flag: string): number | undefined {
+  const i = argv.indexOf(flag);
+  if (i < 0 || i + 1 >= argv.length) return undefined;
+  const n = parseInt(argv[i + 1]!, 10);
+  return Number.isFinite(n) ? n : undefined;
 }

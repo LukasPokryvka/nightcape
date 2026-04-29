@@ -26,8 +26,8 @@ export function saveState(repoRoot: string, state: State): void {
   renameSync(tmp, path);
 }
 
-export function initState(repoRoot: string, queue: number[]): State {
-  const now = new Date();
+export function initState(repoRoot: string, queue: number[], nowOverride?: Date): State {
+  const now = nowOverride ?? new Date();
   const runId = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const state: State = {
     version: 1,
