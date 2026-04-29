@@ -54,6 +54,7 @@ export function finalizeReport(repoRoot: string, date: string, ended: Date): voi
   const path = reportPath(repoRoot, date);
   if (!existsSync(path)) return;
   const body = readFileSync(path, "utf8");
+  if (/^Ended: /m.test(body)) return; // already finalized — idempotent no-op
   // Count outcomes already in body
   const counts = {
     auto_merged: (body.match(/✅ auto-merged/g) ?? []).length,

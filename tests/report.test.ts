@@ -54,3 +54,14 @@ test("finalizeReport writes a summary line at top once duration known", () => {
   expect(c).toContain("Auto-merged: 1");
   rmSync(dir, { recursive: true });
 });
+
+test("finalizeReport is idempotent if called twice", () => {
+  const dir = tmp();
+  initReport(dir, "2026-04-29", new Date("2026-04-29T22:00:00Z"));
+  finalizeReport(dir, "2026-04-29", new Date("2026-04-30T04:00:00Z"));
+  const first = readFileSync(join(dir, ".nightcape", "runs", "2026-04-29.md"), "utf8");
+  finalizeReport(dir, "2026-04-29", new Date("2026-04-30T05:00:00Z"));
+  const second = readFileSync(join(dir, ".nightcape", "runs", "2026-04-29.md"), "utf8");
+  expect(second).toBe(first);
+  rmSync(dir, { recursive: true });
+});
