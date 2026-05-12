@@ -1,0 +1,15 @@
+{
+  "name": "nightcape",
+  "version": "0.0.1",
+  "type": "module",
+  "bin": { "nightcape": "./bin/nightcape.ts" },
+  "scripts": {
+    "test": "bun test",
+    "lint": "tsc --noEmit",
+    "build": "bun build ./bin/nightcape.ts --target=bun --outfile=dist/nightcape.js"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}
